@@ -13,7 +13,7 @@ impl Stack {
         }
     }
 
-    fn push(&mut self, value: u16) {
+    pub fn push(&mut self, value: u16) {
         if self.sp >= STACK_SIZE {
             panic!("Stack Overflow");
         }
@@ -22,7 +22,7 @@ impl Stack {
         self.sp += 1;
     }
 
-    fn pop(&mut self) -> u16 {
+    pub fn pop(&mut self) -> u16 {
         if self.sp == 0 {
             panic!("Stack Underflow");
         }

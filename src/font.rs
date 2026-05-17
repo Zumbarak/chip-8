@@ -31,13 +31,17 @@ impl Framebuffer {
         }
     }
 
-    fn set_pixel(&mut self, x: usize, y: usize, value: u8) {
+    pub fn set_pixel(&mut self, x: usize, y: usize, value: u8) {
         if x < WIDTH && y < HEIGHT {
             self.pixels[y * WIDTH + x] = value;
         }
     }
 
-    fn get_pixel(&self, x: usize, y: usize) -> u8 {
+    pub fn clear(&mut self) {
+        self.pixels.fill(0);
+    }
+
+    pub fn get_pixel(&self, x: usize, y: usize) -> u8 {
         self.pixels[y * WIDTH + x]
     }
 }
@@ -56,31 +60,4 @@ fn draw_char(fb: &mut Framebuffer, char: u8, x: usize, y: usize) {
             }
         }
     }
-}
-
-pub fn draw_str(fb: &mut Framebuffer, text: &str, mut x: usize, y: usize) {
-    for c in text.bytes() {
-        if c.is_ascii_digit() {
-            draw_char(fb, c - b'0', x, y);
-        } else if (b'A'..=b'F').contains(&c) {
-            draw_char(fb, 10 + c - b'A', x, y);
-        }
-
-        x += 8;
-    }
-
-    print_fb(fb);
-}
-
-pub fn print_fb(fb: &Framebuffer) {
-    for y in 0..HEIGHT {
-        for x in 0..WIDTH {
-            let pixel = fb.get_pixel(x, y);
-            if x % 64 == 0 {
-                println!();
-            }
-            print!("{}", if pixel == 1 { "#" } else { "." });
-        }
-    }
-    println!();
 }
