@@ -34,7 +34,11 @@ impl Chip8 {
         for y in 0..32 {
             let mut line = String::with_capacity(64);
             for x in 0..64 {
-                line.push(if self.fb.get_pixel(x, y) == 1 { '#' } else { '.' });
+                line.push(if self.fb.get_pixel(x, y) == 1 {
+                    '#'
+                } else {
+                    '.'
+                });
             }
             println!("{line}");
         }
@@ -141,5 +145,9 @@ impl Chip8 {
 
             self.last_timer_update += std::time::Duration::from_micros(16_667);
         }
+    }
+
+    pub fn pixel(&self, x: usize, y: usize) -> bool {
+        self.fb.get_pixel(x, y) == 1
     }
 }
