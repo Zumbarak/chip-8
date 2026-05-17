@@ -1,12 +1,12 @@
 const STACK_SIZE: usize = 16;
 
-struct Stack {
+pub struct Stack {
     data: [u16; STACK_SIZE],
     sp: usize,
 }
 
 impl Stack {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             data: [0; STACK_SIZE],
             sp: 0,

@@ -1,9 +1,12 @@
+mod chip8;
 mod font;
+mod keys;
 mod stack;
 
 fn main() {
-    let mut fb = font::Framebuffer::new();
-
-    font::draw_str(&mut fb, "C0DE", 10, 10);
-    font::draw_str(&mut fb, "C0DE", 10, 10);
+    let mut chip8 = chip8::Chip8::new();
+    loop {
+        let opcode = fetch();
+        execute(opcode);
+    }
 }
