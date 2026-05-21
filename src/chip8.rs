@@ -1,4 +1,5 @@
 use crate::font::Framebuffer;
+use crate::font::FONTSET;
 use crate::stack::Stack;
 
 pub struct Chip8 {
@@ -16,12 +17,14 @@ pub struct Chip8 {
 
 impl Chip8 {
     pub fn new() -> Self {
+        let mut memory = [0u8; 4096];
+        memory[0x050..0x050 + 80].copy_from_slice(&FONTSET);
         Self {
             delay_timer: 0,
             sound_timer: 0,
             last_timer_update: std::time::Instant::now(),
             keys: [false; 16],
-            memory: [0; 4096],
+            memory,
             v: [0; 16],
             i: 0,
             pc: 0x200,
@@ -79,6 +82,21 @@ impl Chip8 {
                 self.stack.push(self.pc);
                 self.pc = nnn;
             }
+            0x3 => {
+                if self.v[x] == nn {
+                    self.pc += 2;
+                }
+            }
+            0x4 => {
+                if self.v[x] != nn {
+                    self.pc += 2;
+                }
+            }
+            0x5 => {
+                if self.v[x] == self.v[y] {
+                    self.pc += 2;
+                }
+            }
             0x6 => {
                 //set vx
                 self.v[x] = nn;
@@ -87,9 +105,48 @@ impl Chip8 {
                 //add value to vx
                 self.v[x] = self.v[x].wrapping_add(nn);
             }
+            0x8 => {
+                if n == 0x0 {
+                    self.v[x] = self.v[y];
+                } else if n == 0x1 {
+                    self.v[x] |= self.v[y];
+                } else if n == 0x2 {
+                    self.v[x] &= self.v[y];
+                } else if n == 0x3 {
+                    self.v[x] ^= self.v[y];
+                } else if n == 0x4 {
+                    let (res, carry) = self.v[x].overflowing_add(self.v[y]);
+                    self.v[x] = res;
+                    self.v[0xF] = carry as u8;
+                } else if n == 0x5 {
+                    let (res, borrow) = self.v[x].overflowing_sub(self.v[y]);
+                    self.v[x] = res;
+                    self.v[0xF] = (!borrow) as u8;
+                } else if n == 0x6 {
+                    self.v[x] = self.v[y];
+                    let bit = self.v[x] & 1;
+                    self.v[x] >>= 1;
+                    self.v[0xF] = bit;
+                } else if n == 0x7 {
+                    let (res, borrow) = self.v[y].overflowing_sub(self.v[x]);
+                    self.v[x] = res;
+                    self.v[0xF] = (!borrow) as u8;
+                } else if n == 0xE {
+                    self.v[x] = self.v[y];
+                    let bit = self.v[x] >> 7;
+                    self.v[x] <<= 1;
+                    self.v[0xF] = bit;
+                }
+            }
             0xA => {
                 //Set I
                 self.i = nnn;
+            }
+            0xB => {
+                self.pc = nnn.wrapping_add(self.v[0] as u16);
+            }
+            0xC => {
+                self.v[x] = rand::random::<u8>() & nn;
             }
             0xD => {
                 //Draw
@@ -101,7 +158,7 @@ impl Chip8 {
                     if row + py >= 32 {
                         break;
                     }
-                    let byte = self.memory[self.i as usize + row] as u8;
+                    let byte = self.memory[self.i as usize + row];
                     for col in 0..8 {
                         if col + px >= 64 {
                             break;
@@ -114,6 +171,54 @@ impl Chip8 {
                                 self.v[0xF] = 1;
                             }
                         }
+                    }
+                }
+            }
+            0xE => {
+                let key = (self.v[x] & 0xF) as usize;
+                if n == 0xE && self.keys[key] {
+                    self.pc += 2;
+                } else if n == 0x1 && !self.keys[key] {
+                    self.pc += 2;
+                }
+            }
+            0xF => {
+                if n == 0x7 {
+                    self.v[x] = self.delay_timer;
+                } else if nn == 0x15 {
+                    self.delay_timer = self.v[x];
+                } else if n == 0x8 {
+                    self.sound_timer = self.v[x];
+                } else if n == 0xE {
+                    let (res, carry) = self.i.overflowing_add(self.v[x] as u16);
+                    self.i = res;
+                    self.v[0xF] = carry as u8;
+                } else if n == 0xA {
+                    let mut pressed = None;
+                    for val in 0..16 {
+                        if self.keys[val] {
+                            pressed = Some(val as u8);
+                            break;
+                        }
+                    }
+                    match pressed {
+                        Some(key) => self.v[x] = key,
+                        None => self.pc -= 2,
+                    }
+                } else if n == 0x9 {
+                    self.i = 0x050 + (self.v[x] & 0xF) as u16 * 5;
+                } else if n == 0x3 {
+                    let v = self.v[x];
+                    self.memory[self.i as usize] = v / 100;
+                    self.memory[self.i as usize + 1] = (v / 10) % 10;
+                    self.memory[self.i as usize + 2] = v % 10;
+                } else if nn == 0x55 {
+                    for val in 0..=x {
+                        self.memory[self.i as usize + val] = self.v[val];
+                    }
+                } else if nn == 0x65 {
+                    for val in 0..=x {
+                        self.v[val] = self.memory[self.i as usize + val];
                     }
                 }
             }
@@ -149,5 +254,9 @@ impl Chip8 {
 
     pub fn pixel(&self, x: usize, y: usize) -> bool {
         self.fb.get_pixel(x, y) == 1
+    }
+
+    pub fn set_key(&mut self, idx: usize, pressed: bool) {
+        self.keys[idx] = pressed;
     }
 }

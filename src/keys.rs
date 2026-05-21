@@ -1,6 +1,6 @@
 use winit::keyboard::KeyCode;
 
-fn map_key(key: KeyCode) -> Option<usize> {
+pub fn map_key(key: KeyCode) -> Option<usize> {
     match key {
         KeyCode::Digit1 => Some(0x1),
         KeyCode::Digit2 => Some(0x2),

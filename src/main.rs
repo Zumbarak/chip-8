@@ -69,6 +69,14 @@ impl ApplicationHandler for App {
                 buffer.present().unwrap();
                 window.request_redraw();
             }
+            WindowEvent::KeyboardInput { event, .. } => {
+                if let winit::keyboard::PhysicalKey::Code(code) = event.physical_key {
+                    if let Some(idx) = keys::map_key(code) {
+                        let pressed = event.state == winit::event::ElementState::Pressed;
+                        self.chip8.set_key(idx, pressed);
+                    }
+                }
+            }
             _ => {}
         }
     }
